@@ -1,12 +1,12 @@
 process.loadEnvFile()
 import express from 'express'
 import bodyParser from 'body-parser'
-import { Block, generateNextBlock, getBlockchain } from './blockchain'
+import { getBlockchain, Block, generateNextBlock } from './blockchain'
 import { getSockets, connectToPeers, initP2PServer } from './p2p'
 
 
-const httpPort: number = parseInt(process.env.HTTP_PORT)  || 3001
-const p2pPort: number = parseInt(process.env.P2P_PORT)  || 6001
+const httpPort: number = parseInt(process.env.HTTP_PORT as string)  || 3001
+const p2pPort: number = parseInt(process.env.P2P_PORT as string)  || 6001
 
 const initHttpServer = (myHttpPort: number) => {
   const app = express()
@@ -21,7 +21,7 @@ const initHttpServer = (myHttpPort: number) => {
     res.send(newBlock)
   })
   app.get('/peers', (req,res) => {
-    res.send(getSockets().map((s:any) => s._socket.remoteAddress + ':' + s_socket.remotePort))
+    res.send(getSockets().map((s:any) => s._socket.remoteAddress + ':' + s._socket.remotePort))
   })
   app.post('/addPeer', (req,res) => {
     connectToPeers(req.body.peer)

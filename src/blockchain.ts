@@ -1,3 +1,5 @@
+import { broadcastLatest } from "./p2p";
+
 class Block {
   public index: number;
   public hash: string;
@@ -73,7 +75,7 @@ const addBlocktoChain = (block: Block): boolean => {
 }
 
 const replaceChain = (newBlocks: Block[]) => {
-  if(isValidChain(newBlocks) && newBlocks.lenght > getBlockchain().length){
+  if(isValidChain(newBlocks) && newBlocks.length > getBlockchain().length){
     console.log('Valid Blockchain, replacing the existing one')
     blockchain = newBlocks
     broadcastLatest() //TODO - MAKE THIS FUNCTION
