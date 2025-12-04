@@ -5,6 +5,7 @@ VitCoin is a minimal, educational blockchain implementation built to demonstrate
 
 [VitCoin Demo Video](https://raw.githubusercontent.com/vitormascarenhas/VitCoin/main/assets/Video.mp4)
 
+![VitCoin Demo](assets/video.gif)
 
 🚀 Features
 
