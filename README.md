@@ -3,9 +3,7 @@ VitCoin — Minimal Blockchain
 
 VitCoin is a minimal, educational blockchain implementation built to demonstrate how core blockchain concepts work under the hood — blocks, hashing, proof-of-work, and validation — in the simplest way possible.
 
-[VitCoin Demo Video](https://raw.githubusercontent.com/vitormascarenhas/VitCoin/main/assets/Video.mp4)
-
-![VitCoin Demo](assets/video.gif)
+https://github.com/user-attachments/assets/f0954417-0adb-41c8-84d4-a6cb1a56f82f
 
 🚀 Features
 
