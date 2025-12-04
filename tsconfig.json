@@ -2,6 +2,7 @@
   "compilerOptions": {
     "outDir": "./dist/",
     "noImplicitAny": true,
+    "strictPropertyInitialization": false,
     "module": "CommonJS", //es6 //ESnext // CommonJS
     "target": "ES2020", //es5
     "jsx": "react",
