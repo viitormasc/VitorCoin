@@ -1,0 +1,24 @@
+// Get blocks
+GET http://localhost:3001/blocks HTTP/1.1
+content-type: application/json
+
+
+###
+GET http://localhost:3001/block/91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627 HTTP/1.1
+content-type: application/json
+
+###
+
+GET http://localhost:3001/unspentTransactionOutputs HTTP/1.1
+content-type: application/json
+
+###
+
+GET http://localhost:3001/myUnspentTransactionOutputs HTTP/1.1
+content-type: application/json
+
+###
+
+GET http://localhost:3001/address HTTP/1.1
+content-type: application/json
+

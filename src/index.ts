@@ -17,6 +17,7 @@ import { getTransactionPool } from "./transactionPool";
 import { getPublicFromWallet, initWallet } from "./wallet";
 import _ from "lodash";
 import { UnspentTxOut } from "./transactions";
+import cors from 'cors'
 
 const httpPort: number = parseInt(process.env.HTTP_PORT as string) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT as string) || 6001;
@@ -24,7 +25,7 @@ const p2pPort: number = parseInt(process.env.P2P_PORT as string) || 6001;
 const initHttpServer = (myHttpPort: number) => {
   const app = express();
   app.use(bodyParser.json());
-
+  app.use(cors())
   app.use((err, req, res, next) => {
     if (err) {
       res.status(400).send(err.message);
