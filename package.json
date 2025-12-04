@@ -21,6 +21,7 @@
     "@types/lodash": "^4.17.21",
     "@types/ws": "^8.18.1",
     "body-parser": "^2.2.1",
+    "crypto-js": "^4.2.0",
     "cryptojs": "^2.5.3",
     "elliptic": "^6.6.1",
     "express": "^5.2.0",

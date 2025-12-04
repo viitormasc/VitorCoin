@@ -1,6 +1,6 @@
 process.loadEnvFile();
-import * as express from "express";
-import * as bodyParser from "body-parser";
+import express from "express";
+import bodyParser from "body-parser";
 import {
   getBlockchain,
   Block,
@@ -15,7 +15,7 @@ import {
 import { getSockets, connectToPeers, initP2PServer } from "./p2p";
 import { getTransactionPool } from "./transactionPool";
 import { getPublicFromWallet, initWallet } from "./wallet";
-import * as _ from "lodash";
+import _ from "lodash";
 import { UnspentTxOut } from "./transactions";
 
 const httpPort: number = parseInt(process.env.HTTP_PORT as string) || 3001;
@@ -149,5 +149,6 @@ const initHttpServer = (myHttpPort: number) => {
     console.log("Listening http on port: " + myHttpPort);
   });
 };
+initHttpServer(httpPort);
 initP2PServer(p2pPort);
 initWallet();

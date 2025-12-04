@@ -1,5 +1,6 @@
-import * as ecdsa from "elliptic";
-import * as _ from "lodash";
+import ecdsa from "elliptic";
+import CryptoJS from "crypto-js";
+import _ from "lodash";
 
 const ec = new ecdsa.ec("secp256k1");
 

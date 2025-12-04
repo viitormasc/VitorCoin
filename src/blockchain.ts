@@ -1,4 +1,5 @@
-import _ = require("lodash");
+import _ from "lodash";
+import CryptoJS from "crypto-js";
 import { broadcastLatest, broadCastTransactionPool } from "./p2p";
 import {
   UnspentTxOut,
