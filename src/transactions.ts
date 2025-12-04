@@ -63,6 +63,10 @@ const validateTransaction = (
   transaction: Transaction,
   aUnspentTxOuts: UnspentTxOut[],
 ): boolean => {
+  if (!isValidTransactionStructure(transaction)) {
+    return false;
+  }
+
   if (getTransactionId(transaction) !== transaction.id) {
     console.log("invalid tx id: " + transaction.id);
     return false;
@@ -105,7 +109,7 @@ const validateBlockTransactions = (
     return false;
   }
 
-  //check for duplicate txIns. Each txIn can be included only once
+  // check for duplicate txIns. Each txIn can be included only once
   const txIns: TxIn[] = _(aTransactions)
     .map((tx) => tx.txIns)
     .flatten()
@@ -123,7 +127,10 @@ const validateBlockTransactions = (
 };
 
 const hasDuplicates = (txIns: TxIn[]): boolean => {
-  const groups = _.countBy(txIns, (txIn) => txIn.txOutId + txIn.txOutId);
+  const groups = _.countBy(
+    txIns,
+    (txIn: TxIn) => txIn.txOutId + txIn.txOutIndex,
+  );
   return _(groups)
     .map((value, key) => {
       if (value > 1) {
@@ -162,7 +169,7 @@ const validateCoinbaseTx = (
     console.log("invalid number of txOuts in coinbase transaction");
     return false;
   }
-  if (transaction.txOuts[0].amount != COINBASE_AMOUNT) {
+  if (transaction.txOuts[0].amount !== COINBASE_AMOUNT) {
     console.log("invalid coinbase amount in coinbase transaction");
     return false;
   }
@@ -175,7 +182,8 @@ const validateTxIn = (
   aUnspentTxOuts: UnspentTxOut[],
 ): boolean => {
   const referencedUTxOut: UnspentTxOut = aUnspentTxOuts.find(
-    (uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutId === txIn.txOutId,
+    (uTxO) =>
+      uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex,
   );
   if (referencedUTxOut == null) {
     console.log("referenced txOut not found: " + JSON.stringify(txIn));
@@ -184,7 +192,17 @@ const validateTxIn = (
   const address = referencedUTxOut.address;
 
   const key = ec.keyFromPublic(address, "hex");
-  return key.verify(transaction.id, txIn.signature);
+  const validSignature: boolean = key.verify(transaction.id, txIn.signature);
+  if (!validSignature) {
+    console.log(
+      "invalid txIn signature: %s txId: %s address: %s",
+      txIn.signature,
+      transaction.id,
+      referencedUTxOut.address,
+    );
+    return false;
+  }
+  return true;
 };
 
 const getTxInAmount = (txIn: TxIn, aUnspentTxOuts: UnspentTxOut[]): number => {
@@ -251,10 +269,10 @@ const signTxIn = (
 };
 
 const updateUnspentTxOuts = (
-  newTransactions: Transaction[],
+  aTransactions: Transaction[],
   aUnspentTxOuts: UnspentTxOut[],
 ): UnspentTxOut[] => {
-  const newUnspentTxOuts: UnspentTxOut[] = newTransactions
+  const newUnspentTxOuts: UnspentTxOut[] = aTransactions
     .map((t) => {
       return t.txOuts.map(
         (txOut, index) =>
@@ -263,7 +281,7 @@ const updateUnspentTxOuts = (
     })
     .reduce((a, b) => a.concat(b), []);
 
-  const consumedTxOuts: UnspentTxOut[] = newTransactions
+  const consumedTxOuts: UnspentTxOut[] = aTransactions
     .map((t) => t.txIns)
     .reduce((a, b) => a.concat(b), [])
     .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, "", 0));
@@ -283,10 +301,6 @@ const processTransactions = (
   aUnspentTxOuts: UnspentTxOut[],
   blockIndex: number,
 ) => {
-  if (!isValidTransactionsStructure(aTransactions)) {
-    return null;
-  }
-
   if (!validateBlockTransactions(aTransactions, aUnspentTxOuts, blockIndex)) {
     console.log("invalid block transactions");
     return null;
@@ -301,7 +315,7 @@ const toHexString = (byteArray): string => {
 };
 
 const getPublicKey = (aPrivateKey: string): string => {
-  return ec.keyFromPrivate(aPrivateKey, "hex").getPublic().encode("hex");
+  return ec.keyFromPrivate(aPrivateKey, "hex").getPublic().encode("hex", false);
 };
 
 const isValidTxInStructure = (txIn: TxIn): boolean => {
@@ -340,12 +354,6 @@ const isValidTxOutStructure = (txOut: TxOut): boolean => {
   }
 };
 
-const isValidTransactionsStructure = (transactions: Transaction[]): boolean => {
-  return transactions
-    .map(isValidTransactionStructure)
-    .reduce((a, b) => a && b, true);
-};
-
 const isValidTransactionStructure = (transaction: Transaction) => {
   if (typeof transaction.id !== "string") {
     console.log("transactionId missing");
@@ -376,9 +384,10 @@ const isValidTransactionStructure = (transaction: Transaction) => {
   return true;
 };
 
-//valid address is a valid ecdsa public key in the 04 + X-coordinate + Y-coordinate format
+// valid address is a valid ecdsa public key in the 04 + X-coordinate + Y-coordinate format
 const isValidAddress = (address: string): boolean => {
   if (address.length !== 130) {
+    console.log(address);
     console.log("invalid public key length");
     return false;
   } else if (address.match("^[a-fA-F0-9]+$") === null) {
@@ -395,10 +404,13 @@ export {
   processTransactions,
   signTxIn,
   getTransactionId,
+  isValidAddress,
+  validateTransaction,
   UnspentTxOut,
   TxIn,
   TxOut,
   getCoinbaseTransaction,
   getPublicKey,
+  hasDuplicates,
   Transaction,
 };

@@ -1,13 +1,16 @@
-import WebSocket from "ws";
+import * as WebSocket from "ws";
 import { Server } from "ws";
 import {
-  addBlocktoChain,
+  addBlockToChain,
   Block,
   getBlockchain,
   getLatestBlock,
+  handleReceivedTransaction,
   isValidBlockStructure,
   replaceChain,
 } from "./blockchain";
+import { getTransactionPool } from "./transactionPool";
+import { Transaction } from "./transactions";
 
 const sockets: WebSocket[] = [];
 

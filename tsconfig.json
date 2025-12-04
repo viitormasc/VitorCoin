@@ -1,24 +1,10 @@
 {
   "compilerOptions": {
     "outDir": "./dist/",
-    "noImplicitAny": true,
-    "strictPropertyInitialization": false,
-    "module": "CommonJS", //es6 //ESnext // CommonJS
-    "target": "ES2020", //es5
-    "jsx": "react",
-    "allowJs": true,
-    "moduleResolution": "node",
-    "lib": ["ESNext", "DOM"],
-    "sourceMap": true,
     "rootDir": "./src",
-    "removeComments": true,
-    "noEmitOnError": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
+    "module": "commonjs",
+    "target": "ES2015",
+    "sourceMap": true,
     "typeRoots": ["./src/types", "./node_modules/@types"],
   },
   "include": ["./src"],

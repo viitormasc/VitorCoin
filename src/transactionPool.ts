@@ -1,10 +1,10 @@
 import * as _ from "lodash";
 import {
   Transaction,
-  TxIn,
   UnspentTxOut,
   validateTransaction,
-} from "./transaction";
+  TxIn,
+} from "./transactions";
 
 let transactionPool: Transaction[] = [];
 

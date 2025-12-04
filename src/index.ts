@@ -1,6 +1,6 @@
 process.loadEnvFile();
-import express from "express";
-import bodyParser from "body-parser";
+import * as express from "express";
+import * as bodyParser from "body-parser";
 import {
   getBlockchain,
   Block,
@@ -8,10 +8,15 @@ import {
   generatenextBlockWithTransaction,
   generateRawNextBlock,
   getAccountBalance,
+  getMyUnspentTransactionOutputs,
+  getUnspentTxOuts,
+  sendTransaction,
 } from "./blockchain";
 import { getSockets, connectToPeers, initP2PServer } from "./p2p";
 import { getTransactionPool } from "./transactionPool";
 import { getPublicFromWallet, initWallet } from "./wallet";
+import * as _ from "lodash";
+import { UnspentTxOut } from "./transactions";
 
 const httpPort: number = parseInt(process.env.HTTP_PORT as string) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT as string) || 6001;

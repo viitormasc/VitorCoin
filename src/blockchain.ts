@@ -1,9 +1,11 @@
-import { broadcastLatest } from "./p2p";
+import _ = require("lodash");
+import { broadcastLatest, broadCastTransactionPool } from "./p2p";
 import {
   UnspentTxOut,
   Transaction,
   getCoinbaseTransaction,
   processTransactions,
+  isValidAddress,
 } from "./transactions";
 import { hexToBinary } from "./util";
 import {
@@ -11,62 +13,82 @@ import {
   createTransaction,
   getPrivateFromWallet,
   getBalance,
+  findUnspentTxOuts,
 } from "./wallet";
+import {
+  getTransactionPool,
+  addToTransactionPool,
+  updateTransactionPool,
+} from "./transactionPool";
 
 class Block {
   public index: number;
   public hash: string;
-  public previousHash: string | null;
+  public previousHash: string;
   public timestamp: number;
-  public data: string;
+  public data: Transaction[];
   public difficulty: number;
   public nonce: number;
 
   constructor(
     index: number,
     hash: string,
-    previousHash: string | null,
+    previousHash: string,
     timestamp: number,
-    data: string,
+    data: Transaction[],
     difficulty: number,
     nonce: number,
   ) {
     this.index = index;
-    this.hash = hash;
     this.previousHash = previousHash;
     this.timestamp = timestamp;
     this.data = data;
+    this.hash = hash;
     this.difficulty = difficulty;
     this.nonce = nonce;
   }
 }
 
-const calculteHash = (
-  index: number,
-  previousHash: string,
-  timestamp: number,
-  data: string,
-  difficulty: number,
-): string =>
-  CryptoJS.SHA256(
-    index + previousHash + timestamp + data + difficulty,
-  ).toString();
+const genesisTransaction = {
+  txIns: [{ signature: "", txOutId: "", txOutIndex: 0 }],
+  txOuts: [
+    {
+      address:
+        "04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a",
+      amount: 50,
+    },
+  ],
+  id: "e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3",
+};
 
 const genesisBlock: Block = new Block(
   0,
-  "816534932c2b7154836da6afc367695e6337db8a921823784c14378abed4f7d7",
-  null,
+  "91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627",
+  "",
   1465154705,
-  "genesis block",
+  [genesisTransaction],
   0,
   0,
 );
 
 let blockchain: Block[] = [genesisBlock];
 
-let unspentTxOuts: UnspentTxOut[] = [];
+// the unspent txOut of genesis block is set to unspentTxOuts on startup
+let unspentTxOuts: UnspentTxOut[] = processTransactions(
+  blockchain[0].data,
+  [],
+  0,
+);
 
 const getBlockchain = (): Block[] => blockchain;
+
+const getUnspentTxOuts = (): UnspentTxOut[] => _.cloneDeep(unspentTxOuts);
+
+// and txPool should be only updated at the same time
+const setUnspentTxOuts = (newUnspentTxOut: UnspentTxOut[]) => {
+  console.log("replacing unspentTxouts with: %s", newUnspentTxOut);
+  unspentTxOuts = newUnspentTxOut;
+};
 
 const getLatestBlock = (): Block => blockchain[blockchain.length - 1];
 
@@ -127,12 +149,17 @@ const generateRawNextBlock = (blockData: Transaction[]) => {
   }
 };
 
+// gets the unspent transaction outputs owned by the wallet
+const getMyUnspentTransactionOutputs = () => {
+  return findUnspentTxOuts(getPublicFromWallet(), getUnspentTxOuts());
+};
+
 const generateNextBlock = () => {
   const coinbaseTx: Transaction = getCoinbaseTransaction(
     getPublicFromWallet(),
     getLatestBlock().index + 1,
   );
-  const blockData: Transaction[] = [coinbaseTx];
+  const blockData: Transaction[] = [coinbaseTx].concat(getTransactionPool());
   return generateRawNextBlock(blockData);
 };
 
@@ -154,7 +181,8 @@ const generatenextBlockWithTransaction = (
     receiverAddress,
     amount,
     getPrivateFromWallet(),
-    unspentTxOuts,
+    getUnspentTxOuts(),
+    getTransactionPool(),
   );
   const blockData: Transaction[] = [coinbaseTx, tx];
   return generateRawNextBlock(blockData);
@@ -193,7 +221,20 @@ const findBlock = (
 };
 
 const getAccountBalance = (): number => {
-  return getBalance(getPublicFromWallet(), unspentTxOuts);
+  return getBalance(getPublicFromWallet(), getUnspentTxOuts());
+};
+
+const sendTransaction = (address: string, amount: number): Transaction => {
+  const tx: Transaction = createTransaction(
+    address,
+    amount,
+    getPrivateFromWallet(),
+    getUnspentTxOuts(),
+    getTransactionPool(),
+  );
+  addToTransactionPool(tx, getUnspentTxOuts());
+  broadCastTransactionPool();
+  return tx;
 };
 
 const calculateHashForBlock = (block: Block): string =>
@@ -230,8 +271,7 @@ const isValidBlockStructure = (block: Block): boolean => {
 
 const isValidNewBlock = (newBlock: Block, previousBlock: Block): boolean => {
   if (!isValidBlockStructure(newBlock)) {
-    console.log("invalid block structure");
-    console.log(newBlock);
+    console.log("invalid block structure: %s", JSON.stringify(newBlock));
     return false;
   }
   if (previousBlock.index + 1 !== newBlock.index) {
@@ -291,37 +331,61 @@ const hashMatchesDifficulty = (hash: string, difficulty: number): boolean => {
   return hashInBinary.startsWith(requiredPrefix);
 };
 
-const isValidChain = (blockchainToValidate: Block[]): boolean => {
+/*
+    Checks if the given blockchain is valid. Return the unspent txOuts if the chain is valid
+ */
+const isValidChain = (blockchainToValidate: Block[]): UnspentTxOut[] => {
+  console.log("isValidChain:");
+  console.log(JSON.stringify(blockchainToValidate));
   const isValidGenesis = (block: Block): boolean => {
     return JSON.stringify(block) === JSON.stringify(genesisBlock);
   };
 
   if (!isValidGenesis(blockchainToValidate[0])) {
-    return false;
+    return null;
   }
+  /*
+    Validate each block in the chain. The block is valid if the block structure is valid
+      and the transaction are valid
+     */
+  let aUnspentTxOuts: UnspentTxOut[] = [];
 
-  for (let i = 1; i < blockchainToValidate.length; i++) {
+  for (let i = 0; i < blockchainToValidate.length; i++) {
+    const currentBlock: Block = blockchainToValidate[i];
     if (
+      i !== 0 &&
       !isValidNewBlock(blockchainToValidate[i], blockchainToValidate[i - 1])
     ) {
-      return false;
+      return null;
+    }
+
+    aUnspentTxOuts = processTransactions(
+      currentBlock.data,
+      aUnspentTxOuts,
+      currentBlock.index,
+    );
+    if (aUnspentTxOuts === null) {
+      console.log("invalid transactions in blockchain");
+      return null;
     }
   }
-  return true;
+  return aUnspentTxOuts;
 };
 
 const addBlockToChain = (newBlock: Block): boolean => {
   if (isValidNewBlock(newBlock, getLatestBlock())) {
     const retVal: UnspentTxOut[] = processTransactions(
       newBlock.data,
-      unspentTxOuts,
+      getUnspentTxOuts(),
       newBlock.index,
     );
     if (retVal === null) {
+      console.log("block is not valid in terms of transactions");
       return false;
     } else {
       blockchain.push(newBlock);
-      unspentTxOuts = retVal;
+      setUnspentTxOuts(retVal);
+      updateTransactionPool(unspentTxOuts);
       return true;
     }
   }
@@ -329,8 +393,10 @@ const addBlockToChain = (newBlock: Block): boolean => {
 };
 
 const replaceChain = (newBlocks: Block[]) => {
+  const aUnspentTxOuts = isValidChain(newBlocks);
+  const validChain: boolean = aUnspentTxOuts !== null;
   if (
-    isValidChain(newBlocks) &&
+    validChain &&
     getAccumulatedDifficulty(newBlocks) >
       getAccumulatedDifficulty(getBlockchain())
   ) {
@@ -338,19 +404,29 @@ const replaceChain = (newBlocks: Block[]) => {
       "Received blockchain is valid. Replacing current blockchain with received blockchain",
     );
     blockchain = newBlocks;
+    setUnspentTxOuts(aUnspentTxOuts);
+    updateTransactionPool(unspentTxOuts);
     broadcastLatest();
   } else {
     console.log("Received blockchain invalid");
   }
 };
 
+const handleReceivedTransaction = (transaction: Transaction) => {
+  addToTransactionPool(transaction, getUnspentTxOuts());
+};
+
 export {
   Block,
   getBlockchain,
+  getUnspentTxOuts,
   getLatestBlock,
+  sendTransaction,
   generateRawNextBlock,
   generateNextBlock,
   generatenextBlockWithTransaction,
+  handleReceivedTransaction,
+  getMyUnspentTransactionOutputs,
   getAccountBalance,
   isValidBlockStructure,
   replaceChain,
